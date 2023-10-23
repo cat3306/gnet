@@ -21,6 +21,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -50,6 +51,8 @@ type conn struct {
 	buffer         []byte                 // buffer for the latest bytes
 	isDatagram     bool                   // UDP protocol
 	opened         bool                   // connection opened event fired
+	properties     map[string]interface{} // connection properties
+	mu             sync.RWMutex           // connection properties lock
 }
 
 func newTCPConn(fd int, el *eventloop, sa unix.Sockaddr, localAddr, remoteAddr net.Addr) (c *conn) {
@@ -60,6 +63,7 @@ func newTCPConn(fd int, el *eventloop, sa unix.Sockaddr, localAddr, remoteAddr n
 		localAddr:      localAddr,
 		remoteAddr:     remoteAddr,
 		pollAttachment: netpoll.PollAttachment{FD: fd},
+		properties:     make(map[string]interface{}),
 	}
 	c.pollAttachment.Callback = c.handleEvents
 	c.outboundBuffer.Reset(el.engine.opts.WriteBufferCap)
@@ -76,6 +80,7 @@ func newUDPConn(fd int, el *eventloop, localAddr net.Addr, sa unix.Sockaddr, con
 		remoteAddr:     socket.SockaddrToUDPAddr(sa),
 		isDatagram:     true,
 		pollAttachment: netpoll.PollAttachment{FD: fd, Callback: el.readUDP},
+		properties:     make(map[string]interface{}),
 	}
 	if connected {
 		c.peer = nil
@@ -479,4 +484,20 @@ func (*conn) SetReadDeadline(_ time.Time) error {
 
 func (*conn) SetWriteDeadline(_ time.Time) error {
 	return errorx.ErrUnsupportedOp
+}
+
+func (c *conn) SetProperty(key string, value interface{}) {
+	c.mu.Lock()
+	if c.properties == nil {
+		c.properties = make(map[string]interface{})
+	}
+
+	c.properties[key] = value
+	c.mu.Unlock()
+}
+func (c *conn) GetProperty(key string) (value interface{}, exists bool) {
+	c.mu.RLock()
+	value, exists = c.properties[key]
+	c.mu.RUnlock()
+	return
 }

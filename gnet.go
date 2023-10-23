@@ -341,6 +341,10 @@ type Conn interface {
 
 	// SetWriteDeadline implements net.Conn.
 	SetWriteDeadline(t time.Time) (err error)
+
+	SetProperty(key string, value interface{})
+
+	GetProperty(key string) (value interface{}, exists bool)
 }
 
 type (
