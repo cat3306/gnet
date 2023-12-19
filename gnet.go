@@ -331,7 +331,7 @@ type Conn interface {
 	CloseWithCallback(callback AsyncCallback) (err error)
 
 	// Close closes the current connection, implements net.Conn, it's goroutine-safe.
-	Close() (err error)
+	Close(msg string) (err error)
 
 	// SetDeadline implements net.Conn.
 	SetDeadline(t time.Time) (err error)

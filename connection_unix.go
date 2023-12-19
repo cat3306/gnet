@@ -18,6 +18,7 @@
 package gnet
 
 import (
+	"errors"
 	"io"
 	"net"
 	"os"
@@ -468,9 +469,9 @@ func (c *conn) CloseWithCallback(callback AsyncCallback) error {
 	}, nil)
 }
 
-func (c *conn) Close() error {
+func (c *conn) Close(msg string) error {
 	return c.loop.poller.Trigger(func(_ interface{}) (err error) {
-		err = c.loop.close(c, nil)
+		err = c.loop.close(c, errors.New(msg))
 		return
 	}, nil)
 }
