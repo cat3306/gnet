@@ -337,7 +337,7 @@ func startGnetClient(t *testing.T, cli *Client, ev *clientEvents, network, addr 
 		c, err = cli.Dial(network, addr)
 	}
 	require.NoError(t, err)
-	defer c.Close()
+	defer c.Close("")
 	var rspCh chan []byte
 	if network == "udp" {
 		rspCh = make(chan []byte, 1)

@@ -219,7 +219,7 @@ func (cli *Client) Enroll(c net.Conn) (Conn, error) {
 	}
 	err = cli.el.poller.UrgentTrigger(cli.el.register, gc)
 	if err != nil {
-		gc.Close()
+		gc.Close(err.Error())
 		return nil, err
 	}
 	return gc, nil
