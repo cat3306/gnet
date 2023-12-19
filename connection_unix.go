@@ -53,6 +53,7 @@ type conn struct {
 	opened         bool                   // connection opened event fired
 	properties     map[string]interface{} // connection properties
 	mu             sync.RWMutex           // connection properties lock
+	id             string
 }
 
 func newTCPConn(fd int, el *eventloop, sa unix.Sockaddr, localAddr, remoteAddr net.Addr) (c *conn) {
@@ -500,4 +501,11 @@ func (c *conn) GetProperty(key string) (value interface{}, exists bool) {
 	value, exists = c.properties[key]
 	c.mu.RUnlock()
 	return
+}
+
+func (c *conn) Id() string {
+	return c.id
+}
+func (c *conn) SetId(id string) {
+	c.id = id
 }

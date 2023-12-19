@@ -345,6 +345,8 @@ type Conn interface {
 	SetProperty(key string, value interface{})
 
 	GetProperty(key string) (value interface{}, exists bool)
+	Id() string
+	SetId(id string)
 }
 
 type (
