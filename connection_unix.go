@@ -503,6 +503,11 @@ func (c *conn) GetProperty(key string) (value interface{}, exists bool) {
 	c.mu.RUnlock()
 	return
 }
+func (c *conn) DelProperty(key string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.properties, key)
+}
 
 func (c *conn) Id() string {
 	return c.id
