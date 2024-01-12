@@ -18,6 +18,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"sync"
 	"syscall"
 	"time"
 
@@ -52,6 +53,7 @@ type conn struct {
 	inboundBuffer elastic.RingBuffer     // buffer for data from the peer
 	properties    map[string]interface{} // connection properties
 	id            string
+	mu            sync.RWMutex // connection properties lock
 }
 
 func packTCPConn(c *conn, buf []byte) *tcpConn {
@@ -443,9 +445,10 @@ func (c *conn) Wake(cb AsyncCallback) error {
 	return nil
 }
 
-func (c *conn) Close() error {
+// SetDeadline
+func (c *conn) Close(msg string) error {
 	c.loop.ch <- func() error {
-		err := c.loop.close(c, nil)
+		err := c.loop.close(c, errors.New(msg))
 		return err
 	}
 	return nil
