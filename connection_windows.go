@@ -43,13 +43,15 @@ type udpConn struct {
 }
 
 type conn struct {
-	ctx           interface{}        // user-defined context
-	loop          *eventloop         // owner event-loop
-	buffer        *bbPool.ByteBuffer // reuse memory of inbound data as a temporary buffer
-	rawConn       net.Conn           // original connection
-	localAddr     net.Addr           // local server addr
-	remoteAddr    net.Addr           // remote peer addr
-	inboundBuffer elastic.RingBuffer // buffer for data from the peer
+	ctx           interface{}            // user-defined context
+	loop          *eventloop             // owner event-loop
+	buffer        *bbPool.ByteBuffer     // reuse memory of inbound data as a temporary buffer
+	rawConn       net.Conn               // original connection
+	localAddr     net.Addr               // local server addr
+	remoteAddr    net.Addr               // remote peer addr
+	inboundBuffer elastic.RingBuffer     // buffer for data from the peer
+	properties    map[string]interface{} // connection properties
+	id            string
 }
 
 func packTCPConn(c *conn, buf []byte) *tcpConn {
@@ -76,8 +78,9 @@ func packUDPConn(c *conn, buf []byte) *udpConn {
 
 func newTCPConn(nc net.Conn, el *eventloop) (c *conn) {
 	c = &conn{
-		loop:    el,
-		rawConn: nc,
+		loop:       el,
+		rawConn:    nc,
+		properties: make(map[string]interface{}),
 	}
 	c.localAddr = c.rawConn.LocalAddr()
 	c.remoteAddr = c.rawConn.RemoteAddr()
@@ -102,6 +105,7 @@ func newUDPConn(el *eventloop, localAddr, remoteAddr net.Addr) *conn {
 		buffer:     bbPool.Get(),
 		localAddr:  localAddr,
 		remoteAddr: remoteAddr,
+		properties: make(map[string]interface{}),
 	}
 }
 
@@ -474,4 +478,32 @@ func (*conn) SetReadDeadline(_ time.Time) error {
 
 func (*conn) SetWriteDeadline(_ time.Time) error {
 	return errorx.ErrUnsupportedOp
+}
+
+func (c *conn) SetProperty(key string, value interface{}) {
+	c.mu.Lock()
+	if c.properties == nil {
+		c.properties = make(map[string]interface{})
+	}
+
+	c.properties[key] = value
+	c.mu.Unlock()
+}
+func (c *conn) GetProperty(key string) (value interface{}, exists bool) {
+	c.mu.RLock()
+	value, exists = c.properties[key]
+	c.mu.RUnlock()
+	return
+}
+func (c *conn) DelProperty(key string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.properties, key)
+}
+
+func (c *conn) Id() string {
+	return c.id
+}
+func (c *conn) SetId(id string) {
+	c.id = id
 }
