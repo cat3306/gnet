@@ -17,6 +17,7 @@
 package gnet
 
 import (
+	"sync"
 	"sync/atomic"
 
 	"github.com/panjf2000/gnet/v2/internal/gfd"
@@ -25,6 +26,7 @@ import (
 type connMatrix struct {
 	connCount int32
 	connMap   map[int]*conn
+	lock      sync.RWMutex
 }
 
 func (cm *connMatrix) init() {
@@ -32,7 +34,15 @@ func (cm *connMatrix) init() {
 }
 
 func (cm *connMatrix) iterate(f func(*conn) bool) {
-	for _, c := range cm.connMap {
+	cnt := cm.loadCount()
+	list := make([]*conn, 0, cnt)
+	cm.lock.RLock()
+	for _, v := range cm.connMap {
+		v := v
+		list = append(list, v)
+	}
+	cm.lock.RUnlock()
+	for _, c := range list {
 		if c != nil {
 			if !f(c) {
 				return
@@ -51,21 +61,21 @@ func (cm *connMatrix) loadCount() (n int32) {
 
 func (cm *connMatrix) addConn(c *conn, index int) {
 	c.gfd = gfd.NewGFD(c.fd, index, 0, 0)
+	cm.lock.Lock()
 	cm.connMap[c.fd] = c
+	cm.lock.Unlock()
 	cm.incCount(0, 1)
 }
 
 func (cm *connMatrix) delConn(c *conn) {
+	cm.lock.Lock()
 	delete(cm.connMap, c.fd)
+	cm.lock.Unlock()
 	cm.incCount(0, -1)
 }
 
 func (cm *connMatrix) getConn(fd int) *conn {
+	cm.lock.RLock()
+	defer cm.lock.RUnlock()
 	return cm.connMap[fd]
 }
-
-/*
-func (cm *connMatrix) getConnByGFD(fd gfd.GFD) *conn {
-	return cm.connMap[fd.Fd()]
-}
-*/
